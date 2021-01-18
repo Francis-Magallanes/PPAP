@@ -97,8 +97,8 @@ const int rs = 13, rw = 12, en = 11, d4 = 10, d5 = 9, d6 = 8, d7 = 7;
 LiquidCrystal LCD(rs, rw, en, d4, d5, d6, d7); 
 
 const int ButtonMain = 2;
-const int ButtonUp = 3;
-const int ButtonDown = 4;
+const int ButtonUp = 4;
+const int ButtonDown = 3;
 
 int display_address = 0;
 int previous_display_address = -1;
@@ -128,7 +128,46 @@ void DisplayMenu(int da){
         LCD.setCursor(0, 1);
         LCD.print("Feeding Settings");
         break;
-        
+         
+       //for the options under the feeding settings
+      case 11: 
+        //showing the Preset1
+      LCD.clear();
+      LCD.setCursor(0, 0);
+        LCD.print("Select Option");
+        LCD.setCursor(0, 1);
+        LCD.print(Preset1.getName());
+      break;
+    case 12: //Preset2
+      LCD.clear();
+      LCD.setCursor(0, 0);
+        LCD.print("Select Option");
+        LCD.setCursor(0, 1);
+        LCD.print(Preset2.getName());
+      break;
+    case 13: //Preset3
+      LCD.clear();
+      LCD.setCursor(0, 0);
+        LCD.print("Select Option");
+        LCD.setCursor(0, 1);
+        LCD.print(Preset3.getName());
+      break;
+    case 14: //Custom
+      LCD.clear();
+      LCD.setCursor(0, 0);
+        LCD.print("Select Option");
+        LCD.setCursor(0, 1);
+        LCD.print("Custom Set");
+      break;     
+    case 15: //Back
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Select Option");
+      LCD.setCursor(0, 1);
+      LCD.print("Back");
+      break;
+       
+         
       case 2: 
         //Display of Clock Change Option
         LCD.clear();
@@ -139,15 +178,6 @@ void DisplayMenu(int da){
         break;
         
       case 3:
-       //Display of reset option
-        LCD.clear();
-        LCD.setCursor(0, 0);
-        LCD.print("Main Menu");
-        LCD.setCursor(0, 1);
-        LCD.print("Reset");
-        break;
-  
-      case 4:
         //Display of Food Left Inside option
         LCD.clear();
         LCD.setCursor(0, 0);
@@ -156,7 +186,7 @@ void DisplayMenu(int da){
         LCD.print("Food Left");
         break;
         
-      case 5: 
+      case 4: 
         //Display of Back option
         LCD.clear();
         LCD.setCursor(0, 0);
@@ -183,34 +213,45 @@ void DisplayClock(){
 //for the button events
 int ButtonEvent(int da){
 
-    int btnMain = digitalRead(ButtonMain);
-    int btnUp = digitalRead(ButtonUp);
-    int btnDown = digitalRead(ButtonDown);
-
-    int tempAddress = da;
-    
-  //case to case basis 
+    int btnMain = DebounceButton(ButtonMain);
+    int btnUp = DebounceButton(ButtonUp);
+    int btnDown = DebounceButton(ButtonDown);
   
-  if(btnMain == LOW){
-    
-    if(da == 0)  tempAddress = 1;
-    else if(da == 5) tempAddress = 0;
-    delay(10);
+  //temporary variable
+    int tempAddress = da;
+  
+  //case to case basis 
+  if(da <= 0) {
+    //for the display of clock
+    if(btnMain == LOW){
+      tempAddress = 1;
+    }
   }
-  else if(btnDown ==LOW){
+  else{
     
-    if( da >= 1 || da <= 5){
-      tempAddress = (tempAddress % 5) + 1;
+    if(btnMain == LOW){
+      if(da == 4 || da ==  15) tempAddress = tempAddress / 10;
+      else tempAddress = (tempAddress * 10) +1 ;
+      delay(10);
+    }
+
+    else if(btnDown ==LOW){
+
+      if(da == 4) tempAddress = 1;
+      else if (da == 15) tempAddress = 11;
+      else tempAddress ++;
+
+    }
+    else if(btnUp == LOW){
+
+      if(da == 1) tempAddress = 5;
+      else if(da == 11) tempAddress = 15;
+      else tempAddress --;
+
     }
     
   }
-  else if(btnUp == LOW){
-    
-    if(da < 2) tempAddress = 5;
-    else tempAddress --;
-    
-    
-  }
+ 
   
   return tempAddress;
 }
@@ -220,6 +261,20 @@ int PotentiometerEvent(int){
   
 }
 
+//this for the debouncing of the button results
+//dpi stands for digital pin input
+int DebounceButton(int dpi){
+  int results = digitalRead(dpi);
+  
+  if(results == LOW){
+    
+    delay(100);//adjust if there are still bouncing
+    if(results == digitalRead(dpi)) return LOW;
+    else return HIGH;
+  }
+  
+  return HIGH;
+}
 
 void setup(){
   
@@ -232,9 +287,7 @@ void setup(){
 }
 
 void loop(){
-  delay(10);
   DisplayMenu(display_address);
-  delay(10);
   display_address = ButtonEvent(display_address);
-  delay(20);
-}
+  delay(10);
+} 
