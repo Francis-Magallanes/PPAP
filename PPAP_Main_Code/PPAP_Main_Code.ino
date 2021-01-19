@@ -65,31 +65,31 @@ class Feed
   
     private: 
       String Name;
-      int weight;
+      int amount;
       int frequency;
       
     public:
       
       Feed(){
         this->Name = "Custom";
-        this->weight = 0;
+        this->amount = 0;
         this->frequency = 0;
       }
       
-      Feed(String Name, int weight, int frequency){
+      Feed(String Name, int amount, int frequency){
           this->Name = Name;
-          this->weight = weight;
+          this->amount = amount;
           this->frequency = frequency;
       }
   
       //getters
-      int getWeight(){ return weight; }
+      int getAmount(){ return amount; }
       int getFrequency() { return frequency; }
       String getName() { return Name; }
   
       //setters
-      void setWeight(int weight){ this->weight = weight; }
-      void setFrequency() { this->frequency = frequency; }
+      void setAmount(int amount){ this->amount = amount; }
+      void setFrequency(int frequency) { this->frequency = frequency; }
   
 };
 
@@ -101,14 +101,26 @@ const int ButtonUp = 4;
 const int ButtonDown = 3;
 
 int display_address = 0;
+//this variable is for monitoring whether the display address
+//is changed to avoid display flickering
 int previous_display_address = -1;
 
 Feed Preset1("XDogs", 1, 6);
 Feed Preset2("YDogs", 1, 6);
 Feed Preset3("ZDogs", 1, 6);
-Feed Customized();
+Feed CustomPreset;
+Feed *CurrentFeedPreset; //this will monitor the current apply preset
+  
+  
+//these variables for the temporary storage for the custom set option
+int tempFrequency;
+int tempAmount;
 
-//for the display
+//this variable is for monitoring whether the potentiometer or 
+//display address is changed to avoid display flickering
+int previous_poten_value = 0;
+
+//for the display and the menu
 //da - short for display address
 void DisplayMenu(int da){
 
@@ -158,16 +170,49 @@ void DisplayMenu(int da){
         LCD.print("Select Option");
         LCD.setCursor(0, 1);
         LCD.print("Custom Set");
-      break;     
-    case 15: //Back
+      break;
+    case 15: //Back to the main menu
       LCD.clear();
       LCD.setCursor(0, 0);
       LCD.print("Select Option");
       LCD.setCursor(0, 1);
       LCD.print("Back");
       break;
-       
          
+     //for the options under the custom set
+     // note the that value will be printed later in the code
+    case 141: //for the frequency
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Custom Setting");
+      LCD.setCursor(0, 1);
+      LCD.print("Frequency: ");
+      break;
+         
+    case 142://for the amount
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Custom Setting");
+      LCD.setCursor(0, 1);
+      LCD.print("Amount: ");
+      break;
+         
+     case 143://for the confirm
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Custom Setting");
+      LCD.setCursor(0, 1);
+      LCD.print("Confirm");
+      break;
+         
+     case 144://for the cancel
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Custom Setting");
+      LCD.setCursor(0, 1);
+      LCD.print("Cancel");
+      break;
+      
       case 2: 
         //Display of Clock Change Option
         LCD.clear();
@@ -178,14 +223,34 @@ void DisplayMenu(int da){
         break;
         
       case 3:
-        //Display of Food Left Inside option
+        //Display of info about the preset and food left 
         LCD.clear();
         LCD.setCursor(0, 0);
         LCD.print("Main Menu");
         LCD.setCursor(0, 1);
-        LCD.print("Food Left");
+        LCD.print("System Info");
         break;
         
+      case 31://display the food left
+         LCD.clear();
+        LCD.setCursor(0, 0);
+        LCD.print("Food Left: ");
+        LCD.print(GetFoodAmountLeft());
+        LCD.setCursor(0, 1);
+        LCD.print("Setting: ");
+        LCD.print(CurrentFeedPreset->getName());
+        break;
+         
+      case 32://display the frequency
+         LCD.clear();
+        LCD.setCursor(0, 0);
+        LCD.print("Frequency: ");
+        LCD.print(CurrentFeedPreset->getFrequency());
+        LCD.setCursor(0, 1);
+        LCD.print("Amount: ");
+        LCD.print(CurrentFeedPreset->getAmount());
+         break;
+         
       case 4: 
         //Display of Back option
         LCD.clear();
@@ -197,9 +262,37 @@ void DisplayMenu(int da){
         
       }
 
-      previous_display_address = da; // this is important to avoid flickering
+     previous_display_address = da; // this is important to avoid flickering
     }
+    
      
+    //this will display the values of the potentiometer for specific display addresses
+      if(da == 141){
+        //for the custom set frequency
+        tempFrequency = PotentiometerEvent(display_address);
+        if(previous_poten_value != tempFrequency){
+            LCD.setCursor(10, 1);//set the cursor for overwriting
+            LCD.print(tempFrequency);
+          previous_poten_value = tempFrequency;
+        }         
+      }
+      else if( da == 142){
+        //for the custom set amount
+        tempAmount = PotentiometerEvent(display_address);
+        
+        if(previous_poten_value != tempAmount){
+            LCD.setCursor(8, 1);//set the cursor for overwriting
+          LCD.print(tempAmount);
+            
+          //this condition is for going hundreds to tenths
+          //to remove the excess number from transitioning high number to lower one
+           if(tempAmount < 100 || tempAmount < 1000) LCD.print("  ");
+          
+            previous_poten_value = tempAmount;
+        }
+          
+      }
+           
 }
 
 void DisplayClock(){
@@ -229,36 +322,71 @@ int ButtonEvent(int da){
   }
   else{
     
+    //when the main button is pressed
     if(btnMain == LOW){
-      if(da == 4 || da ==  15) tempAddress = tempAddress / 10;
-      else tempAddress = (tempAddress * 10) +1 ;
-      delay(10);
+      
+      
+      if(da == 4 || da ==  15 || da == 141 || da == 144){
+        //for the back or cancel option
+        tempAddress = tempAddress / 10;
+      }
+  
+      else if(da == 31 || da == 32){
+        tempAddress = 0; //this will return to the clock
+      }
+      //for the confirmation of setting of the preset
+      else if(da == 11 || da==13 || da == 143){
+        tempAddress = FeedSettingSelection(da);
+      }
+      
+      else tempAddress = (tempAddress * 10) +1 ;//for the sub-menu selection
+     
     }
-
+  
+    //when the button down is pressed
     else if(btnDown ==LOW){
-
+    
+      //for the looping of the menu
       if(da == 4) tempAddress = 1;
       else if (da == 15) tempAddress = 11;
+      else if (da == 144) tempAddress = 141;
+      else if( da == 32) tempAddress = 31;
       else tempAddress ++;
 
     }
+    
+    //when the button up is pressed
     else if(btnUp == LOW){
-
+    
+      //for the looping of menu
       if(da == 1) tempAddress = 5;
       else if(da == 11) tempAddress = 15;
+      else if (da == 141) tempAddress = 144;
+      else if( da == 31) tempAddress = 32;
       else tempAddress --;
 
     }
     
   }
  
-  
   return tempAddress;
 }
 
-int PotentiometerEvent(int){
-  //this will return the value of the pontentiometer according to the current settings
+int PotentiometerEvent(int da){
+  //this will return the mapped value of the pontentiometer
+  //according to the display address
   
+  int mappedReading = 0;
+  int reading = analogRead(A0); 
+
+  if(da == 141){
+    mappedReading = map(reading,0,1023,1,7);
+  }
+  else if(da == 142){
+    mappedReading = map(reading,0,1023,50,1000);
+  }
+  
+  return mappedReading;
 }
 
 //this for the debouncing of the button results
@@ -276,6 +404,50 @@ int DebounceButton(int dpi){
   return HIGH;
 }
 
+//da refers to the display address variable
+int FeedSettingSelection(int da){
+  
+  LCD.clear();
+  LCD.setCursor(0, 0);
+  LCD.print("Using ");
+  
+  if(da == 11){
+    //for the selection of the first preset
+    CurrentFeedPreset = &Preset1;
+    LCD.print(CurrentFeedPreset->getName());
+  }
+  else if(da == 12){
+    //for the selection of the second preset
+    CurrentFeedPreset = &Preset2;
+    LCD.print(CurrentFeedPreset->getName());
+    
+  }
+  else if(da == 13){
+    //for the selection of the third preset
+    CurrentFeedPreset = &Preset3;
+    LCD.print(CurrentFeedPreset->getName());
+    
+  }
+  else if(da == 143){
+    //for the selection of the custom preset
+    CustomPreset.setFrequency(tempFrequency);
+    CustomPreset.setAmount(tempAmount);
+    CurrentFeedPreset = &CustomPreset;
+    LCD.print(CurrentFeedPreset->getName());
+    
+  }
+  LCD.setCursor(0, 1);
+  LCD.print("Returning...");
+  delay(2000);//2 second delay before returning to the time
+  
+  return 0; //this will make the display go back to the time
+}
+
+//this function will get the food amount left from the load cell
+int GetFoodAmountLeft(){
+  //to be modified
+  return 1000;
+}
 void setup(){
   
   pinMode(ButtonMain, INPUT_PULLUP);
@@ -284,6 +456,8 @@ void setup(){
   LCD.begin(16,2);
   Serial.begin(9600);
   
+  //Preset 1 is the default feed preset
+   CurrentFeedPreset = &Preset1;
 }
 
 void loop(){
