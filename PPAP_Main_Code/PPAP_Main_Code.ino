@@ -1,35 +1,6 @@
 #include <LiquidCrystal.h>
-
-//for the time class definition
-class Time{
-   private:
-      int hour;
-      int minute;
-               
-     public:
-     
-       Time(){
-         hour = 0;
-         minute = 0;
-        }
-       
-       Time(int hour, int minute){
-          this->hour = hour;
-          this->minute = minute;
-      }
-  
-      //getters
-      int getHour(){ return hour; }
-      int getMinute() { return minute; }
-      
-
-        //setters
-      void setHour(int hour){ this->hour = hour; }
-      void setMinute(int minute) { this->minute = minute; }
-     
-  
-};
-
+#include <DS3231.h>
+#include <Wire.h>
 
 //for the profile class feed
 class Feed
@@ -97,18 +68,22 @@ int tempMinute;
 //display address is changed to avoid display flickering
 int previous_poten_value = 0;
 
+//for the clock of the machine
+DS3231 Clock;
+
 //for the display and the menu
 //da - short for display address
 void DisplayMenu(int da){
 
     if(da != previous_display_address){
        switch(da){
-  
+
        case 0:
-        //Display of Clock
-        DisplayClock();  
-        break;
-        
+         LCD.clear();
+        LCD.setCursor(0, 0);
+        LCD.print("Current Time: ");
+       break;
+         
        case 1: 
         //Display of Feeding Settings
         LCD.clear();
@@ -119,14 +94,14 @@ void DisplayMenu(int da){
         break;
          
        //for the options under the feeding settings
-      case 11: 
-        //showing the Preset1
-      LCD.clear();
-      LCD.setCursor(0, 0);
-        LCD.print("Select Option");
-        LCD.setCursor(0, 1);
-        LCD.print(Preset1.getName());
-      break;
+        case 11: 
+          //showing the Preset1
+          LCD.clear();
+          LCD.setCursor(0, 0);
+          LCD.print("Select Option");
+          LCD.setCursor(0, 1);
+          LCD.print(Preset1.getName());
+        break;
     case 12: //Preset2
       LCD.clear();
       LCD.setCursor(0, 0);
@@ -134,27 +109,27 @@ void DisplayMenu(int da){
         LCD.setCursor(0, 1);
         LCD.print(Preset2.getName());
       break;
-    case 13: //Preset3
-      LCD.clear();
-      LCD.setCursor(0, 0);
-        LCD.print("Select Option");
-        LCD.setCursor(0, 1);
-        LCD.print(Preset3.getName());
-      break;
-    case 14: //Custom
-      LCD.clear();
-      LCD.setCursor(0, 0);
-        LCD.print("Select Option");
-        LCD.setCursor(0, 1);
-        LCD.print("Custom Set");
-      break;
-    case 15: //Back to the main menu
-      LCD.clear();
-      LCD.setCursor(0, 0);
-      LCD.print("Select Option");
-      LCD.setCursor(0, 1);
-      LCD.print("Back");
-      break;
+      case 13: //Preset3
+          LCD.clear();
+          LCD.setCursor(0, 0);
+          LCD.print("Select Option");
+          LCD.setCursor(0, 1);
+          LCD.print(Preset3.getName());
+        break;
+      case 14: //Custom
+          LCD.clear();
+          LCD.setCursor(0, 0);
+          LCD.print("Select Option");
+          LCD.setCursor(0, 1);
+          LCD.print("Custom Set");
+        break;
+      case 15: //Back to the main menu
+          LCD.clear();
+          LCD.setCursor(0, 0);
+          LCD.print("Select Option");
+          LCD.setCursor(0, 1);
+          LCD.print("Back");
+        break;
          
      //for the options under the custom set
      // note the that value will be printed later in the code
@@ -190,7 +165,7 @@ void DisplayMenu(int da){
       LCD.print("Cancel");
       break;
       
-//for the options under the change time settings
+    //for the options under the change time settings
       case 2: 
         //Display of Clock Change Option
         LCD.clear();
@@ -201,45 +176,45 @@ void DisplayMenu(int da){
         break;
 
       case 21: //for the hour
-      LCD.clear();
-      LCD.setCursor(0, 0);
-      LCD.print("Change Time");
-      LCD.setCursor(0, 1);
-      LCD.print("Hour: ");
+        LCD.clear();
+        LCD.setCursor(0, 0);
+        LCD.print("Change Time");
+        LCD.setCursor(0, 1);
+        LCD.print("Hour: ");
       break;
          
     case 22://for the minute
-      LCD.clear();
-      LCD.setCursor(0, 0);
-      LCD.print("Change Time");
-      LCD.setCursor(0, 1);
-      LCD.print("Minute: ");
+        LCD.clear();
+        LCD.setCursor(0, 0);
+        LCD.print("Change Time");
+        LCD.setCursor(0, 1);
+        LCD.print("Minute: ");
       break;
          
      case 23://for the confirm 
-      LCD.clear();
-      LCD.setCursor(0, 0);
-      LCD.print("Change Time");
-      LCD.setCursor(0, 1);
-      LCD.print("Confirm");
+        LCD.clear();
+        LCD.setCursor(0, 0);
+        LCD.print("Change Time");
+        LCD.setCursor(0, 1);
+        LCD.print("Confirm");
       break;
          
      case 24://for the cancel
-      LCD.clear();
-      LCD.setCursor(0, 0);
-      LCD.print("Change Time");
-      LCD.setCursor(0, 1);
-      LCD.print("Cancel");
+        LCD.clear();
+        LCD.setCursor(0, 0);
+        LCD.print("Change Time");
+        LCD.setCursor(0, 1);
+        LCD.print("Cancel");
       break;
 
-        case 3:
+       case 3:
         //Display of info about the preset and food left 
         LCD.clear();
         LCD.setCursor(0, 0);
         LCD.print("Main Menu");
         LCD.setCursor(0, 1);
         LCD.print("System Info");
-        break;
+       break;
         
       case 31://display the food left
          LCD.clear();
@@ -249,7 +224,7 @@ void DisplayMenu(int da){
         LCD.setCursor(0, 1);
         LCD.print("Setting: ");
         LCD.print(CurrentFeedPreset->getName());
-        break;
+       break;
          
       case 32://display the frequency
          LCD.clear();
@@ -259,7 +234,7 @@ void DisplayMenu(int da){
         LCD.setCursor(0, 1);
         LCD.print("Amount: ");
         LCD.print(CurrentFeedPreset->getAmount());
-         break;
+       break;
          
       case 4: 
         //Display of Back option
@@ -268,14 +243,21 @@ void DisplayMenu(int da){
         LCD.print("Main Menu");
         LCD.setCursor(0, 1);
         LCD.print("Back");
-        break;
+       break;
+
+       default:
+
+       break;
         
       }
 
      previous_display_address = da; // this is important to avoid flickering
     }
     
-     
+     if(da == 0){
+      //this is for the displaying of the clock
+      DisplayClock();
+     }
     //this will display the values of the potentiometer for specific display addresses
       if(da == 141){
         //for the custom set frequency
@@ -321,20 +303,32 @@ void DisplayMenu(int da){
                 if(tempMinute < 59) LCD.print("  ");
                 previous_poten_value = tempMinute;
               }         
-            }
+     }
 
-         }
+ }
 
 void DisplayClock(){
-  LCD.clear();
-  LCD.setCursor(0, 0);
-  LCD.print("Current Time: ");
+  bool h12;
+  bool PM;
+  int hour = Clock.getHour(h12,PM);
+  int minute = Clock.getMinute();
+  int second = Clock.getSecond();
+  
   LCD.setCursor(0, 1);
+  if(hour < 10) LCD.print("0");
+  LCD.print(hour);
+  LCD.print(":");
+  if(minute < 10) LCD.print("0");
+  LCD.print(minute);
+  LCD.print(":");
+  if(second < 10) LCD.print("0");
+  LCD.print(second);
   
 }
 
 int ChangeClock(){
-  
+  Clock.setHour(tempHour);
+  Clock.setMinute(tempMinute);
   return 0;
 }
 //for the button events
@@ -498,11 +492,18 @@ int GetFoodAmountLeft(){
 }
 
 void setup(){
-  
+
+  //for the buttons
   pinMode(ButtonMain, INPUT_PULLUP);
   pinMode(ButtonUp, INPUT_PULLUP);
   pinMode(ButtonDown, INPUT_PULLUP);
+  
+  //for the lcd
   LCD.begin(16,2);
+
+  //for the ds3231 rtc
+  Wire.begin();
+  
   Serial.begin(9600);
   
   //Preset 1 is the default feed preset
