@@ -3,66 +3,37 @@
 //for the time class definition
 class Time{
    private:
-      int hr;
+      int hour;
       int minute;
-      int sec;
-      long timesec; //this is the combined time in secs.
-      //this function will convert the hr, min, and secs into one time in seconds
-      
-      void ConvertToTimesec(){
-        //the reason for the transfer because the range of int will be
-         //exceed once calculations is done.
-        long h = hr;
-        timesec = (3600 * h) + (60 * minute)+ sec;
-       }
-       
+               
      public:
      
        Time(){
-         hr = 0;
+         hour = 0;
          minute = 0;
-         sec = 0;
-         timesec = 0;
-       }
+        }
        
-       void setHour(int hour){
-         hr = hour % 24; //this will ensure that the hour is less than or equal to 24
-         ConvertToTimesec(); //this update the timesecs in secs
-       }
-       int getHour(){
-        return hr;
-       }
-       void setMinute(int minute){
-         minute = minute % 60; //this will ensure that the minute is less than or equal to 60
-         ConvertToTimesec(); //this update the timesecs in secs
-       }
-       int getMinute(){
-         return minute;
-       }
-       void setSecond(int Second){
-         sec = Second % 60; //this will ensure that the second is less than or equal to 60
-         ConvertToTimesec(); //this update the timesecs in secs
-       }
-       
-       int getSecond(){
-         return sec;
-       }
-       
-       void IncreaseOneSec (){
-       timesec = (timesec + 1) % 86400; //this will ensure that it will go circular once it hits 24hrs
-       //this will convert the time secs into its respective time format.
-       //also, this is for update the variables
-         hr = timesec / 3600;
-         minute = (timesec%3600) / 60;
-         sec = (timesec%3600) % 60;
-       }
+       Time(int hour, int minute){
+          this->hour = hour;
+          this->minute = minute;
+      }
+  
+      //getters
+      int getHour(){ return hour; }
+      int getMinute() { return minute; }
+      
 
+        //setters
+      void setHour(int hour){ this->hour = hour; }
+      void setMinute(int minute) { this->minute = minute; }
+     
+  
 };
+
 
 //for the profile class feed
 class Feed
 {
-  
     private: 
       String Name;
       int amount;
@@ -85,11 +56,14 @@ class Feed
       //getters
       int getAmount(){ return amount; }
       int getFrequency() { return frequency; }
+      
+
       String getName() { return Name; }
   
       //setters
       void setAmount(int amount){ this->amount = amount; }
       void setFrequency(int frequency) { this->frequency = frequency; }
+     
   
 };
 
@@ -115,6 +89,9 @@ Feed *CurrentFeedPreset; //this will monitor the current apply preset
 //these variables for the temporary storage for the custom set option
 int tempFrequency;
 int tempAmount;
+//these variables for the temporary storage for the change time option
+int tempHour;
+int tempMinute;
 
 //this variable is for monitoring whether the potentiometer or 
 //display address is changed to avoid display flickering
@@ -213,6 +190,7 @@ void DisplayMenu(int da){
       LCD.print("Cancel");
       break;
       
+//for the options under the change time settings
       case 2: 
         //Display of Clock Change Option
         LCD.clear();
@@ -221,8 +199,40 @@ void DisplayMenu(int da){
         LCD.setCursor(0, 1);
         LCD.print("Change Time");
         break;
-        
-      case 3:
+
+      case 21: //for the hour
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Change Time");
+      LCD.setCursor(0, 1);
+      LCD.print("Hour: ");
+      break;
+         
+    case 22://for the minute
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Change Time");
+      LCD.setCursor(0, 1);
+      LCD.print("Minute: ");
+      break;
+         
+     case 23://for the confirm 
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Change Time");
+      LCD.setCursor(0, 1);
+      LCD.print("Confirm");
+      break;
+         
+     case 24://for the cancel
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Change Time");
+      LCD.setCursor(0, 1);
+      LCD.print("Cancel");
+      break;
+
+        case 3:
         //Display of info about the preset and food left 
         LCD.clear();
         LCD.setCursor(0, 0);
@@ -292,8 +302,28 @@ void DisplayMenu(int da){
         }
           
       }
-           
-}
+      else if(da == 21){
+              //for the hour
+              tempHour = PotentiometerEvent(display_address);
+              if(previous_poten_value != tempHour){
+                  LCD.setCursor(5, 1);//set the cursor for overwriting
+                  LCD.print(tempHour);
+                if(tempHour < 24) LCD.print("  ");
+                previous_poten_value = tempHour;
+              }         
+            }
+      else if(da == 22){
+              //for the minute
+              tempMinute = PotentiometerEvent(display_address);
+              if(previous_poten_value != tempMinute){
+                  LCD.setCursor(7, 1);//set the cursor for overwriting
+                  LCD.print(tempMinute);
+                if(tempMinute < 59) LCD.print("  ");
+                previous_poten_value = tempMinute;
+              }         
+            }
+
+         }
 
 void DisplayClock(){
   LCD.clear();
@@ -303,6 +333,10 @@ void DisplayClock(){
   
 }
 
+int ChangeClock(){
+  
+  return 0;
+}
 //for the button events
 int ButtonEvent(int da){
 
@@ -326,16 +360,19 @@ int ButtonEvent(int da){
     if(btnMain == LOW){
       
       
-      if(da == 4 || da ==  15 || da == 141 || da == 144){
+      if(da == 4 || da ==  15 || da == 24 || da == 141 || da == 144){
         //for the back or cancel option
         tempAddress = tempAddress / 10;
       }
-  
+      else if (da == 23){
+        //for the clock
+        tempAddress = ChangeClock();
+      }
       else if(da == 31 || da == 32){
         tempAddress = 0; //this will return to the clock
       }
       //for the confirmation of setting of the preset
-      else if(da == 11 || da==13 || da == 143){
+      else if(da == 11 || da == 12 || da==23 || da==13 || da == 143){
         tempAddress = FeedSettingSelection(da);
       }
       
@@ -351,6 +388,7 @@ int ButtonEvent(int da){
       else if (da == 15) tempAddress = 11;
       else if (da == 144) tempAddress = 141;
       else if( da == 32) tempAddress = 31;
+      else if( da == 24) tempAddress = 21;
       else tempAddress ++;
 
     }
@@ -363,6 +401,7 @@ int ButtonEvent(int da){
       else if(da == 11) tempAddress = 15;
       else if (da == 141) tempAddress = 144;
       else if( da == 31) tempAddress = 32;
+      else if( da == 21) tempAddress = 24;
       else tempAddress --;
 
     }
@@ -385,6 +424,13 @@ int PotentiometerEvent(int da){
   else if(da == 142){
     mappedReading = map(reading,0,1023,50,1000);
   }
+  else if(da == 21){
+    mappedReading = map(reading,0,1023,00,23);
+  }
+  else if(da == 22){
+    mappedReading = map(reading,0,1023,00,59);
+  }
+
   
   return mappedReading;
 }
@@ -405,6 +451,8 @@ int DebounceButton(int dpi){
 }
 
 //da refers to the display address variable
+//this function will excute the selection
+//displaying a affirmation window
 int FeedSettingSelection(int da){
   
   LCD.clear();
@@ -448,6 +496,7 @@ int GetFoodAmountLeft(){
   //to be modified
   return 1000;
 }
+
 void setup(){
   
   pinMode(ButtonMain, INPUT_PULLUP);
