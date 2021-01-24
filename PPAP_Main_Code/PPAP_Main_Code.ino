@@ -45,6 +45,7 @@ const int ButtonMain = 2;
 const int ButtonUp = 4;
 const int ButtonDown = 3;
 const int BackLightPin = A1;
+const int thresholdInactivity = 10000;
 
 int display_address = 0;
 //this variable is for monitoring whether the display address
@@ -72,8 +73,9 @@ int previous_poten_value = 0;
 //for the clock of the machine
 DS3231 Clock;
 
-//this is for the monitoring of the inactivity to shut down the display
-
+//this is for the monitoring of the inactivity to shut down the display using millis
+int previousMillisCheck;
+bool isScreenOn;
 
 //for the display and the menu
 //da - short for display address
@@ -344,14 +346,14 @@ int ButtonEvent(int da){
   //temporary variable
     int tempAddress = da;
   
-  //case to case basis 
-  if(da <= 0) {
+  //case to case basis and the screen should be on
+  if(da <= 0 && isScreenOn) {
     //for the display of clock
     if(btnMain == LOW){
       tempAddress = 1;
     }
   }
-  else{
+  else if(isScreenOn){
     
     //when the main button is pressed
     if(btnMain == LOW){
@@ -410,7 +412,35 @@ int ButtonEvent(int da){
     }
     
   }
-  Serial.println(tempAddress);
+
+
+  //this will monitor whether there is inactivity using the buttons 
+  if(btnMain == HIGH && btnUp == HIGH && btnDown == HIGH){
+
+    int inactiveTime = millis() - previousMillisCheck;
+
+    if(inactiveTime > thresholdInactivity){
+      isScreenOn = false;
+      digitalWrite(BackLightPin, LOW);
+      LCD.noDisplay();      
+    }
+    
+  }
+  else{
+    
+    previousMillisCheck = millis();
+
+     //when the screen off, needs to be turned on
+    if(!isScreenOn){
+       isScreenOn = true;
+      digitalWrite(BackLightPin, HIGH);
+      LCD.display(); 
+      tempAddress = 0;//this will return to the clock after a button pressed
+    }
+   
+  }
+
+  
   return tempAddress;
 }
 
@@ -521,8 +551,9 @@ void setup(){
   Serial.begin(9600);
 
   //this will start the display
-  digitalWrite(BackLightPin, HIGH);
-   
+  isScreenOn = true;
+  digitalWrite(BackLightPin, isScreenOn);
+  
   //Preset 1 is the default feed preset
    CurrentFeedPreset = &Preset1;
 }
