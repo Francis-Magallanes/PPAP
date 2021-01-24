@@ -44,15 +44,16 @@ LiquidCrystal LCD(rs, rw, en, d4, d5, d6, d7);
 const int ButtonMain = 2;
 const int ButtonUp = 4;
 const int ButtonDown = 3;
+const int BackLightPin = A1;
 
 int display_address = 0;
 //this variable is for monitoring whether the display address
 //is changed to avoid display flickering
 int previous_display_address = -1;
 
-Feed Preset1("XDogs", 1, 6);
-Feed Preset2("YDogs", 1, 6);
-Feed Preset3("ZDogs", 1, 6);
+Feed Preset1("Small Dog", 2, 6);
+Feed Preset2("Medium Dog", 2, 6);
+Feed Preset3("Large Dog", 2, 6);
 Feed CustomPreset;
 Feed *CurrentFeedPreset; //this will monitor the current apply preset
   
@@ -70,6 +71,9 @@ int previous_poten_value = 0;
 
 //for the clock of the machine
 DS3231 Clock;
+
+//this is for the monitoring of the inactivity to shut down the display
+
 
 //for the display and the menu
 //da - short for display address
@@ -90,7 +94,7 @@ void DisplayMenu(int da){
         LCD.setCursor(0, 0);
         LCD.print("Main Menu");
         LCD.setCursor(0, 1);
-        LCD.print("Feeding Settings");
+        LCD.print("Change Feed Set.");
         break;
          
        //for the options under the feeding settings
@@ -234,6 +238,7 @@ void DisplayMenu(int da){
         LCD.setCursor(0, 1);
         LCD.print("Amount: ");
         LCD.print(CurrentFeedPreset->getAmount());
+        LCD.print(" Cups");
        break;
          
       case 4: 
@@ -273,14 +278,11 @@ void DisplayMenu(int da){
         tempAmount = PotentiometerEvent(display_address);
         
         if(previous_poten_value != tempAmount){
-            LCD.setCursor(8, 1);//set the cursor for overwriting
+          LCD.setCursor(8, 1);//set the cursor for overwriting
           LCD.print(tempAmount);
-            
-          //this condition is for going hundreds to tenths
-          //to remove the excess number from transitioning high number to lower one
-           if(tempAmount < 100 || tempAmount < 1000) LCD.print("  ");
-          
-            previous_poten_value = tempAmount;
+          LCD.print(" Cups");
+                    
+          previous_poten_value = tempAmount;
         }
           
       }
@@ -329,6 +331,7 @@ void DisplayClock(){
 int ChangeClock(){
   Clock.setHour(tempHour);
   Clock.setMinute(tempMinute);
+  Clock.setSecond(0);
   return 0;
 }
 //for the button events
@@ -354,9 +357,13 @@ int ButtonEvent(int da){
     if(btnMain == LOW){
       
       
-      if(da == 4 || da ==  15 || da == 24 || da == 141 || da == 144){
-        //for the back or cancel option
+      if(da == 4 || da ==  15 ){
+        //for the back option
         tempAddress = tempAddress / 10;
+      }
+      else if (da == 24 || da == 144){
+        //for the canceel option
+        tempAddress = 0;
       }
       else if (da == 23){
         //for the clock
@@ -369,8 +376,10 @@ int ButtonEvent(int da){
       else if(da == 11 || da == 12 || da==23 || da==13 || da == 143){
         tempAddress = FeedSettingSelection(da);
       }
-      
-      else tempAddress = (tempAddress * 10) +1 ;//for the sub-menu selection
+
+      // the condition is for the scenario where the user press the main button
+      //during the changing of the time or setting the custom setting
+      else if(da != 141 && da != 142 && da != 21 && da != 22) tempAddress = (tempAddress * 10) +1 ;//for the sub-menu selection
      
     }
   
@@ -401,7 +410,7 @@ int ButtonEvent(int da){
     }
     
   }
- 
+  Serial.println(tempAddress);
   return tempAddress;
 }
 
@@ -413,15 +422,19 @@ int PotentiometerEvent(int da){
   int reading = analogRead(A0); 
 
   if(da == 141){
-    mappedReading = map(reading,0,1023,1,7);
+    //for the frequency of feeding
+    mappedReading = map(reading,0,1023,2,9);
   }
   else if(da == 142){
-    mappedReading = map(reading,0,1023,50,1000);
+    //for the amount of feeding in cups
+    mappedReading = map(reading,0,1023,1,9);
   }
   else if(da == 21){
+    //for the changing of hour
     mappedReading = map(reading,0,1023,00,23);
   }
   else if(da == 22){
+    //for the changing of minute
     mappedReading = map(reading,0,1023,00,59);
   }
 
@@ -497,6 +510,7 @@ void setup(){
   pinMode(ButtonMain, INPUT_PULLUP);
   pinMode(ButtonUp, INPUT_PULLUP);
   pinMode(ButtonDown, INPUT_PULLUP);
+  pinMode(BackLightPin, OUTPUT);
   
   //for the lcd
   LCD.begin(16,2);
@@ -505,7 +519,10 @@ void setup(){
   Wire.begin();
   
   Serial.begin(9600);
-  
+
+  //this will start the display
+  digitalWrite(BackLightPin, HIGH);
+   
   //Preset 1 is the default feed preset
    CurrentFeedPreset = &Preset1;
 }
