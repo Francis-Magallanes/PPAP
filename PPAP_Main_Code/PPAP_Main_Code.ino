@@ -2,6 +2,8 @@
 #include <DS3231.h>
 #include <Wire.h>
 #include <Servo.h>
+#include <HX711_ADC.h>
+#include <EEPROM.h>
 #include "pitches.h"
 
 //for the profile class feed
@@ -123,6 +125,14 @@ int previous_poten_value = 0;
 int previousMillisCheck;
 bool isScreenOn;
 
+//pins:
+const int HX711_dout = A2; //mcu > HX711 dout pin
+const int HX711_sck = A3; //mcu > HX711 sck pin
+const int calVal_eepromAdress = 0;
+  unsigned long t = 0; //for the load cell
+
+//HX711 constructor:
+HX711_ADC LoadCell(HX711_dout, HX711_sck);
 
 void setup(){
 
@@ -140,7 +150,7 @@ void setup(){
   //for the ds3231 rtc
   Wire.begin();
   
-  Serial.begin(9600);
+  Serial.begin(57600);
 
   //this will start the display
   isScreenOn = true;
@@ -148,9 +158,27 @@ void setup(){
   
   //Preset 1 is the default feed preset
    CurrentFeedPreset = &Preset1;
+
+  //for the setup of the load cell
+   LoadCell.begin();
+   float calibrationValue;
+   EEPROM.get(calVal_eepromAdress, calibrationValue);
+   unsigned long stabilizingtime = 2000; // preciscion right after power-up can be improved by adding a few seconds of stabilizing time
+   boolean _tare = true; //set this to false if you don't want tare to be performed in the next step
+   LoadCell.start(stabilizingtime, _tare);
+   if (LoadCell.getTareTimeoutFlag()) {
+    Serial.println("Timeout, check MCU>HX711 wiring and pin designations");
+   }
+   else {
+    LoadCell.setCalFactor(calibrationValue); // set calibration value (float)
+    Serial.println("Startup is complete");
+  }
 }
 
 void loop(){
+  //for the continual update of the load cell
+  LoadCell.update();
+  
   DisplayMenu(display_address);
   display_address = ButtonEvent(display_address);
   FeedingEvent();
@@ -639,12 +667,14 @@ void FeedingEvent(){
 
     //this play for the tone
      DispensingTone();
+     delay(500);
+     DispensingTone();
     
     //for the feeding proper and this will dispense the food
-      DispenseFood(4);
+      DispenseFood(CurrentFeedPreset -> getAmount());
       
     //checking whether there is enough food left
-    if(GetFoodAmountLeft() <= 300){
+    if(GetFoodAmountLeft() <= 200){
       LCD.clear();
       LCD.setCursor(0, 0);
       LCD.print("Food left less");
@@ -652,6 +682,8 @@ void FeedingEvent(){
       LCD.print("than 300 grams");
 
       //sound for the notification
+      LowFoodLeftTone();
+      delay(500);
       LowFoodLeftTone();
     }
 
@@ -680,9 +712,18 @@ void DispenseFood(int cups){
 }
 
 //this function will get the food amount left from the load cell
-int GetFoodAmountLeft(){
-  //to be modified
-  return 299;
+float GetFoodAmountLeft(){
+  
+  //this function will get 50 samples from the load cell and average it
+  float sum = 0;
+  for(int i = 0; i <50; i++){
+    LoadCell.update();
+    sum = sum + LoadCell.getData();
+  }
+
+  
+  
+  return sum/50;
 }
 
 //this is for the playing of the tone for dispensing
@@ -712,11 +753,12 @@ void DispensingTone(){
 //this is for the playing of the tone for the lo amount of food left
 void LowFoodLeftTone(){
 
+ 
   /*
    * Credits to Tom Igoe for the code
    */
   int melody[] = {
-  NOTE_C5, NOTE_G3, NOTE_G3, NOTE_A4, NOTE_G3, 0, NOTE_B3, NOTE_C4
+  NOTE_C5, NOTE_G3, NOTE_G3, NOTE_A4, NOTE_G3,  NOTE_B4, NOTE_B3, NOTE_C4
   };
 
   int noteDurations[] = {
