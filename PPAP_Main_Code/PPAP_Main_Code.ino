@@ -77,6 +77,38 @@ DS3231 Clock;
 int previousMillisCheck;
 bool isScreenOn;
 
+
+void setup(){
+
+  //for the buttons
+  pinMode(ButtonMain, INPUT_PULLUP);
+  pinMode(ButtonUp, INPUT_PULLUP);
+  pinMode(ButtonDown, INPUT_PULLUP);
+  pinMode(BackLightPin, OUTPUT);
+  
+  //for the lcd
+  LCD.begin(16,2);
+
+  //for the ds3231 rtc
+  Wire.begin();
+  
+  Serial.begin(9600);
+
+  //this will start the display
+  isScreenOn = true;
+  digitalWrite(BackLightPin, isScreenOn);
+  
+  //Preset 1 is the default feed preset
+   CurrentFeedPreset = &Preset1;
+}
+
+void loop(){
+  DisplayMenu(display_address);
+  display_address = ButtonEvent(display_address);
+  delay(10);
+}
+
+
 //for the display and the menu
 //da - short for display address
 void DisplayMenu(int da){
@@ -228,7 +260,7 @@ void DisplayMenu(int da){
         LCD.print("Food Left: ");
         LCD.print(GetFoodAmountLeft());
         LCD.setCursor(0, 1);
-        LCD.print("Setting: ");
+        LCD.print("Set: ");
         LCD.print(CurrentFeedPreset->getName());
        break;
          
@@ -336,6 +368,7 @@ int ChangeClock(){
   Clock.setSecond(0);
   return 0;
 }
+
 //for the button events
 int ButtonEvent(int da){
 
@@ -533,33 +566,3 @@ int GetFoodAmountLeft(){
   //to be modified
   return 1000;
 }
-
-void setup(){
-
-  //for the buttons
-  pinMode(ButtonMain, INPUT_PULLUP);
-  pinMode(ButtonUp, INPUT_PULLUP);
-  pinMode(ButtonDown, INPUT_PULLUP);
-  pinMode(BackLightPin, OUTPUT);
-  
-  //for the lcd
-  LCD.begin(16,2);
-
-  //for the ds3231 rtc
-  Wire.begin();
-  
-  Serial.begin(9600);
-
-  //this will start the display
-  isScreenOn = true;
-  digitalWrite(BackLightPin, isScreenOn);
-  
-  //Preset 1 is the default feed preset
-   CurrentFeedPreset = &Preset1;
-}
-
-void loop(){
-  DisplayMenu(display_address);
-  display_address = ButtonEvent(display_address);
-  delay(10);
-} 
