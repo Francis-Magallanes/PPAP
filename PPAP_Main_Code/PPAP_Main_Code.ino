@@ -2,6 +2,7 @@
 #include <DS3231.h>
 #include <Wire.h>
 #include <Servo.h>
+#include "pitches.h"
 
 //for the profile class feed
 class Feed
@@ -621,6 +622,14 @@ void FeedingEvent(){
   
   //check first whether it is feeding time
   if( CurrentFeedPreset -> isFeedingTime(currentHour, currentMinute) ){
+
+    //for the scenario when the screen is off
+    //it will on the display
+    if(!isScreenOn){
+      LCD.display();
+      digitalWrite(BackLightPin, HIGH);
+    }
+    
     //for the message
     LCD.clear();
     LCD.setCursor(0, 0);
@@ -628,6 +637,9 @@ void FeedingEvent(){
     LCD.setCursor(0, 1);
     LCD.print("UwU ...........");
 
+    //this play for the tone
+     DispensingTone();
+    
     //for the feeding proper and this will dispense the food
       DispenseFood(4);
       
@@ -640,9 +652,17 @@ void FeedingEvent(){
       LCD.print("than 300 grams");
 
       //sound for the notification
-      
+      LowFoodLeftTone();
     }
-    
+
+    //for the scenario when the screen is off
+    //it will off the display
+    if(!isScreenOn){
+      LCD.noDisplay();
+      digitalWrite(BackLightPin, LOW);
+    }
+
+    previous_display_address = -1; //this will display the correct menu after the dispensing
   }
   
 }
@@ -662,5 +682,62 @@ void DispenseFood(int cups){
 //this function will get the food amount left from the load cell
 int GetFoodAmountLeft(){
   //to be modified
-  return 1000;
+  return 299;
+}
+
+//this is for the playing of the tone for dispensing
+void DispensingTone(){
+  int melody[] = {NOTE_G4, NOTE_F3, NOTE_G3, NOTE_D3, NOTE_B4, NOTE_A4, NOTE_G3, NOTE_A4, NOTE_E4 };
+
+  int noteDurations[] = {8, 8, 8, 4, 4, 8,8,8, 12};
+
+     // iterate over the notes of the melody:
+    for (int thisNote = 0; thisNote < 8; thisNote++) {
+
+    // to calculate the note duration, take one second divided by the note type.
+    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    int noteDuration = 1000 / noteDurations[thisNote];
+    tone(5, melody[thisNote], noteDuration);
+
+    // to distinguish the notes, set a minimum time between them.
+    // the note's duration + 30% seems to work well:
+    int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    // stop the tone playing:
+    noTone(8);
+  
+  }
+}
+
+//this is for the playing of the tone for the lo amount of food left
+void LowFoodLeftTone(){
+
+  /*
+   * Credits to Tom Igoe for the code
+   */
+  int melody[] = {
+  NOTE_C5, NOTE_G3, NOTE_G3, NOTE_A4, NOTE_G3, 0, NOTE_B3, NOTE_C4
+  };
+
+  int noteDurations[] = {
+    4, 8, 8, 4, 8, 4, 4, 8
+  };
+
+   // iterate over the notes of the melody:
+  for (int thisNote = 0; thisNote < 8; thisNote++) {
+
+    // to calculate the note duration, take one second divided by the note type.
+    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    int noteDuration = 1000 / noteDurations[thisNote];
+    tone(5, melody[thisNote], noteDuration);
+
+    // to distinguish the notes, set a minimum time between them.
+    // the note's duration + 30% seems to work well:
+    int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    // stop the tone playing:
+    noTone(8);
+  
+  }
+
 }
