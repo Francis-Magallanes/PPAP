@@ -1,6 +1,7 @@
 #include <LiquidCrystal.h>
 #include <DS3231.h>
 #include <Wire.h>
+#include <Servo.h>
 
 //for the profile class feed
 class Feed
@@ -9,6 +10,7 @@ class Feed
       String Name;
       int amount;
       int frequency;
+      bool isFeedGiven; //this will monitor whether the food is given within the schedule
       
     public:
       
@@ -16,45 +18,91 @@ class Feed
         this->Name = "Custom";
         this->amount = 0;
         this->frequency = 0;
+        this->isFeedGiven = false;
       }
       
       Feed(String Name, int amount, int frequency){
           this->Name = Name;
           this->amount = amount;
           this->frequency = frequency;
+          this->isFeedGiven = false;
       }
   
       //getters
       int getAmount(){ return amount; }
       int getFrequency() { return frequency; }
-      
-
       String getName() { return Name; }
   
       //setters
       void setAmount(int amount){ this->amount = amount; }
       void setFrequency(int frequency) { this->frequency = frequency; }
-     
+
+     //for the checking whether it is feed or not
+     //based on the inputted time
+     bool isFeedingTime(int hr, int minute){
+      /*
+       * The feeding time is from 7:00 to 19:00 . This means that there will will be
+       * 12 hours window for the feeding. This window time for feeding will be divided according to
+       * the frequency set. This will be computed and stored to the delta variable
+       */
+      int delta; //in minutes
+      int startTime = 420; //this the 7:00 but in minutes
+      int minuteInput =  (hr * 60) + minute; //minute value of the input
+      int allowance = 2; //this is for the allowance just in case the delay of the program affects the schedule of feeding
+
+      if(frequency >1){
+        delta = 720 / (frequency - 1);
+      }
+      else delta = 0;
+
+      
+      //this will run through the different time schedule using the delta
+      for(int i = 1; i <= frequency ; i++){
+
+        int currentSched = startTime + ( delta * (i-1) );
+        if(minuteInput >= currentSched && minuteInput <= (currentSched + allowance) && !isFeedGiven){
+          isFeedGiven = true; //if the condition are met, the machine will feed the pet
+          return true;
+        }
+      }
+
+      //this will set the isFeedGiven to false if it is without the time period
+       for(int i = 1; i <= frequency ; i++){
+
+        int currentSched = startTime + ( delta * (i-1) );
+        int nextSched = currentSched + delta;
+        if( minuteInput > currentSched + allowance && minuteInput < nextSched){
+          isFeedGiven = false;
+        }
+      }
+      
+      return false; 
+     }
   
 };
 
 const int rs = 13, rw = 12, en = 11, d4 = 10, d5 = 9, d6 = 8, d7 = 7;
 LiquidCrystal LCD(rs, rw, en, d4, d5, d6, d7); 
+//for the clock of the machine
+DS3231 Clock;
+
+//for the motor
+Servo myservo;
 
 const int ButtonMain = 2;
 const int ButtonUp = 4;
 const int ButtonDown = 3;
 const int BackLightPin = A1;
-const int thresholdInactivity = 10000;
+const int thresholdInactivity = 15000;//in milliseconds
 
 int display_address = 0;
 //this variable is for monitoring whether the display address
 //is changed to avoid display flickering
 int previous_display_address = -1;
 
-Feed Preset1("Small Dog", 2, 6);
-Feed Preset2("Medium Dog", 2, 6);
-Feed Preset3("Large Dog", 2, 6);
+Feed Preset1("Small Dog", 1, 2);
+Feed Preset2("Medium Dog", 2, 2);
+Feed Preset3("Large Dog", 3, 2);
 Feed CustomPreset;
 Feed *CurrentFeedPreset; //this will monitor the current apply preset
   
@@ -70,9 +118,6 @@ int tempMinute;
 //display address is changed to avoid display flickering
 int previous_poten_value = 0;
 
-//for the clock of the machine
-DS3231 Clock;
-
 //this is for the monitoring of the inactivity to shut down the display using millis
 int previousMillisCheck;
 bool isScreenOn;
@@ -85,6 +130,8 @@ void setup(){
   pinMode(ButtonUp, INPUT_PULLUP);
   pinMode(ButtonDown, INPUT_PULLUP);
   pinMode(BackLightPin, OUTPUT);
+
+  myservo.attach(6);
   
   //for the lcd
   LCD.begin(16,2);
@@ -105,6 +152,7 @@ void setup(){
 void loop(){
   DisplayMenu(display_address);
   display_address = ButtonEvent(display_address);
+  FeedingEvent();
   delay(10);
 }
 
@@ -484,21 +532,24 @@ int PotentiometerEvent(int da){
   int mappedReading = 0;
   int reading = analogRead(A0); 
 
+  Serial.println(reading);
+  int maxPotenReading = 885;
+
   if(da == 141){
     //for the frequency of feeding
-    mappedReading = map(reading,0,1023,2,9);
+    mappedReading = map(reading,0,maxPotenReading,1,6);
   }
   else if(da == 142){
     //for the amount of feeding in cups
-    mappedReading = map(reading,0,1023,1,9);
+    mappedReading = map(reading,0,maxPotenReading,1,9);
   }
   else if(da == 21){
     //for the changing of hour
-    mappedReading = map(reading,0,1023,00,23);
+    mappedReading = map(reading,0,maxPotenReading,00,23);
   }
   else if(da == 22){
     //for the changing of minute
-    mappedReading = map(reading,0,1023,00,59);
+    mappedReading = map(reading,0,maxPotenReading,00,59);
   }
 
   
@@ -559,6 +610,53 @@ int FeedSettingSelection(int da){
   delay(2000);//2 second delay before returning to the time
   
   return 0; //this will make the display go back to the time
+}
+
+//this function will handle the feeding process
+void FeedingEvent(){
+  bool h12;
+  bool PM;
+  int currentHour = Clock.getHour(h12,PM); //get the current time
+  int currentMinute = Clock.getMinute();
+  
+  //check first whether it is feeding time
+  if( CurrentFeedPreset -> isFeedingTime(currentHour, currentMinute) ){
+    //for the message
+    LCD.clear();
+    LCD.setCursor(0, 0);
+    LCD.print("Feeding your dog");
+    LCD.setCursor(0, 1);
+    LCD.print("UwU ...........");
+
+    //for the feeding proper and this will dispense the food
+      DispenseFood(4);
+      
+    //checking whether there is enough food left
+    if(GetFoodAmountLeft() <= 300){
+      LCD.clear();
+      LCD.setCursor(0, 0);
+      LCD.print("Food left less");
+      LCD.setCursor(0, 1);
+      LCD.print("than 300 grams");
+
+      //sound for the notification
+      
+    }
+    
+  }
+  
+}
+
+void DispenseFood(int cups){
+  //this will calculate the delay for which the "valve" is open
+  //this is done through linear regression
+  
+  float  gramsFeed = 97 * cups; //based on the sample got
+  float timeDelay = (gramsFeed - 58.5)/63.5; //this is in seconds
+
+  myservo.write(0); // this will open the "valve"
+  delay(timeDelay * 1000);
+  myservo.write(90); //this will close the "valve"
 }
 
 //this function will get the food amount left from the load cell
