@@ -674,7 +674,7 @@ void FeedingEvent(){
       DispenseFood(CurrentFeedPreset -> getAmount());
       
     //checking whether there is enough food left
-    if(GetFoodAmountLeft() <= 200){
+    if(GetFoodAmountLeft() <= 300){
       LCD.clear();
       LCD.setCursor(0, 0);
       LCD.print("Food left less");
@@ -701,13 +701,13 @@ void FeedingEvent(){
 
 void DispenseFood(int cups){
   //this will calculate the delay for which the "valve" is open
-  //this is done through linear regression
+  //this is done through linear regression with offset
   
   float  gramsFeed = 97 * cups; //based on the sample got
-  float timeDelay = (gramsFeed - 58.5)/63.5; //this is in seconds
+  float timeDelay = (((gramsFeed - 58.5)/63.5)+ 0.8)*1000; //this is in seconds
 
   myservo.write(0); // this will open the "valve"
-  delay(timeDelay * 1000);
+  delay(timeDelay);
   myservo.write(90); //this will close the "valve"
 }
 
@@ -716,14 +716,14 @@ float GetFoodAmountLeft(){
   
   //this function will get 50 samples from the load cell and average it
   float sum = 0;
+  float data = LoadCell.getData();
   for(int i = 0; i <50; i++){
     LoadCell.update();
-    sum = sum + LoadCell.getData();
+    if(data > 0) sum = sum + LoadCell.getData();
   }
 
-  
-  
-  return sum/50;
+  if(sum > 0) return sum/50;
+  else return 0;
 }
 
 //this is for the playing of the tone for dispensing
