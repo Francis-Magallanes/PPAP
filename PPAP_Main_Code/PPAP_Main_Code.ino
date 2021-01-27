@@ -674,12 +674,12 @@ void FeedingEvent(){
       DispenseFood(CurrentFeedPreset -> getAmount());
       
     //checking whether there is enough food left
-    if(GetFoodAmountLeft() <= 300){
+    if(GetFoodAmountLeft() <= 150){
       LCD.clear();
       LCD.setCursor(0, 0);
       LCD.print("Food left less");
       LCD.setCursor(0, 1);
-      LCD.print("than 300 grams");
+      LCD.print("than 150 grams");
 
       //sound for the notification
       LowFoodLeftTone();
@@ -704,7 +704,7 @@ void DispenseFood(int cups){
   //this is done through linear regression with offset
   
   float  gramsFeed = 97 * cups; //based on the sample got
-  float timeDelay = (((gramsFeed - 58.5)/63.5)+ 0.8)*1000; //this is in seconds
+  float timeDelay = (((gramsFeed - 58.5)/63.5)+ 0.7)*1000; //this is in seconds
 
   myservo.write(0); // this will open the "valve"
   delay(timeDelay);
