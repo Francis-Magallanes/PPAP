@@ -26,7 +26,7 @@ The circuit schematic diagram below has the following electronic components:
 - Micro-usb breakout board
 - 16x2 LCD display
 - Piezo-electric buzzer
-This project can be powered by an android charger that delivers a 5V supply.
+  This project can be powered by an android charger that delivers a 5V supply.
 Thus, the micro plug will act as a 5V voltage supply.  
 
 Circuit Schematic:
