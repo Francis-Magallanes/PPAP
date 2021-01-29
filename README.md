@@ -30,5 +30,5 @@ This project is powered by an android charger that delivers a 5V supply.
 Thus, the micro plug will act as a 5V voltage supply.  
 
 Circuit Schematic:
-  ![Circuit Schematic used for the Code] (circuit schematic_schem_v3.png)
+  ![Circuit Schematic used for the Code] (circuit_schematic_schem_v3.png)
 
